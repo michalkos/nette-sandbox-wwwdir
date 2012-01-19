@@ -1,32 +1,27 @@
 <?php
 
 /**
- * Basic Model class
+ * Basic Model class for dibi
  * @author Michal Kos
  */
 class Model extends Nette\Object
 {
 	
-	/** @var Nette\Database\Connection */
+	/** @var DibiConnection */
 	public $db;
 
+	/** @var string */
+	public $sql;
 	
 	/**
 	 * @param Nette\Database\Connection $database
 	 */
-	public function __construct(Nette\Database\Connection $database)
+	public function __construct($parameters, $name = 'dibi0')
 	{
-		$this->db = $database;
-	}
-
-	
-	/**
-	 * @param string $table Table name
-	 * @return Nette\Database\Table\Selection
-	 */
-	public function table($table)
-	{
-		return $this->db->table($table);
+		if( ! (isset($this->db) && $this->db->isConnected())) {
+			if(isset($parameters['name'])) unset($parameters['name']);
+			$this->db = dibi::connect($parameters, $name);
+		}
 	}
 	
 	
@@ -43,57 +38,65 @@ class Model extends Nette\Object
 	
 	
 	/**
-	 * Insert new row
-	 * @param string $table
-	 * @param array $values
-	 * @return Nette\Database\Table\ActiveRow|FALSE 
+	 * @param string $table Table name
+	 * @param mixed $select Select columns
+	 * @return DibiFluent
 	 */
-	public function insert($table, $values)
+	public function table($table, $select = null)
 	{
-		return $this->table($table)->insert($values);
-	}
-	
-	
-	/**
-	 * Update a row
-	 * @param string $table
-	 * @param array $values
-	 * @param array|int $where
-	 * @param bool $solvePrimary Get a primary column automatically
-	 * @return int|FALSE
-	 */
-	public function update($table, $values, $where = null, $solvePrimary = true)
-	{
-		if(is_null($where)) {
-			return $this->table($table)->update($values);
-			
-		} else {
-			if(is_int($where) && $where > 0 && $solvePrimary) {
-				$primary = $this->table($table)->getPrimary();
-				$where = array($primary => $where);
-			}
-			
-			return $this->table($table)->where($where)->update($values);
-		}
-	}
-	
-	
-	/**
-	 * Delete a row
-	 * @param string $table
-	 * @param array|int $where
-	 * @param bool $solvePrimary Get a primary column automatically
-	 * @return int|FALSE 
-	 */
-	public function delete($table, $where, $solvePrimary = true)
-	{
-		if(is_int($where) && $where > 0 && $solvePrimary) {
-			$primary = $this->table($table)->getPrimary();
-			$where = array($primary => $where);
+		if(is_null($select)) {
+			$select = '*';
 		}
 		
-		return $this->table($table)->where($where)->delete();
+		return $this->db->select($select)->from($table);
 	}
 	
-
+	
+	/**
+	 * Generates and executes SQL query - Monostate for DibiConnection::query().
+	 * @param  array|mixed      one or more arguments
+	 * @return DibiResult|int   result set object (if any)
+	 * @throws DibiException
+	 */
+	public function query($args)
+	{
+		$args = func_get_args();
+		
+		$q = $this->db->query($args);
+		$this->sql = dibi::$sql;
+		
+		return $q;
+	}
+	
+	
+	/**
+	 * Get Data Source from SQL query
+	 * @param  array|mixed      one or more arguments
+	 * @return DibiDataSource 
+	 */
+	public function dataSourceQuery($args)
+	{
+		$args = func_get_args();
+		return $this->db->dataSource($args);
+	}
+	
+	
+	/**
+	 * Get Data Source
+	 * @param string $table Table name
+	 * @param bool $valid_till If TRUE - 'where valid_till is null' is applied
+	 * @return DibiDataSource 
+	 */
+	public function getDataSource($table, $valid_till = false)
+	{
+		$q[] = 'SELECT * FROM %n';
+		$q[] = $table;
+		
+		if($valid_till) {
+			$q[] = 'WHERE [valid_till] IS NULL';
+		}
+		
+		return $this->dataSourceQuery($q);
+	}
+	
 }

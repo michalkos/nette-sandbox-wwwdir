@@ -14,7 +14,7 @@ abstract class ModelLoader extends Nette\Object
 	public $context;
 	
 	/** @var bool */
-	private $modelStarted = false;
+	protected $modelStarted = false;
 	
 	
 	/**

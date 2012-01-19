@@ -7,10 +7,11 @@
 common:
 	parameters:
 		database:
+			name: dibi0
 			driver: mysql
-			host: localhost
-			dbname: test
-			user: root
+			hostname: localhost
+			database: test
+			username: root
 			password: 
 
 
@@ -20,18 +21,8 @@ common:
 		# zlib.output_compression: yes
 
 
-	nette:
-		database:
-			default:
-				dsn: '%database.driver%:host=%database.host%;dbname=%database.dbname%'
-				user: %database.user%
-				password: %database.password%
-
-
 	services:
-		database: @Nette\Database\Connection
-				
-		model: Model( @database )
+		model: Model( %database%, %database.name% )
 
 		authenticator: Authenticator( @model::table(users) )
 
@@ -39,3 +30,9 @@ common:
 production < common:
 
 development < common:
+
+	parameters:
+		database:
+			profiler:
+				run: true
+				file: %sysDir%/log/dibi.log
