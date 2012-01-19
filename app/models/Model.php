@@ -18,16 +18,6 @@ class Model extends Nette\Object
 	{
 		$this->db = $database;
 	}
-
-	
-	/**
-	 * @param string $table Table name
-	 * @return Nette\Database\Table\Selection
-	 */
-	public function table($table)
-	{
-		return $this->db->table($table);
-	}
 	
 	
 	/**
@@ -39,6 +29,16 @@ class Model extends Nette\Object
 	public function loadModel($name, Nette\DI\Container $context = null)
 	{
 		return new $name($this, $context);
+	}
+	
+	
+	/**
+	 * @param string $table Table name
+	 * @return Nette\Database\Table\Selection
+	 */
+	public function table($table)
+	{
+		return $this->db->table($table);
 	}
 	
 	
