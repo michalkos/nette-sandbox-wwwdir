@@ -1,0 +1,5 @@
+parameters:
+	database:
+		profiler:
+			run: true
+			file: %sysDir%/log/dibi.log

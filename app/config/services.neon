@@ -1,0 +1,3 @@
+services:
+	model: Model( %database%, %database.name% )
+	authenticator: Authenticator( @model::table(users) )
