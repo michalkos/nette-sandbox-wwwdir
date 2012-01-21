@@ -1,0 +1,14 @@
+parameters:
+	database:
+		driver: mysql
+		host: localhost
+		dbname: test
+		user: root
+		password: 
+
+nette:
+	database:
+		default:
+			dsn: '%database.driver%:host=%database.host%;dbname=%database.dbname%'
+			user: %database.user%
+			password: %database.password%

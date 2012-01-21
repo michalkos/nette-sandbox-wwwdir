@@ -1,0 +1,4 @@
+services:
+	database: @Nette\Database\Connection
+	model: Model( @database )
+	authenticator: Authenticator( @model::table(users) )

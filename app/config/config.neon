@@ -5,37 +5,23 @@
 # http://nette.org/security-warning
 #
 common:
-	parameters:
-		database:
-			driver: mysql
-			host: localhost
-			dbname: test
-			user: root
-			password: 
-
-
 	php:
 		date.timezone: Europe/Prague
 		# session.save_path: "%tempDir%/sessions"
 		# zlib.output_compression: yes
 
-
-	nette:
-		database:
-			default:
-				dsn: '%database.driver%:host=%database.host%;dbname=%database.dbname%'
-				user: %database.user%
-				password: %database.password%
-
-
-	services:
-		database: @Nette\Database\Connection
-				
-		model: Model( @database )
-
-		authenticator: Authenticator( @model::table(users) )
-
+	includes:
+		- database.neon
+		- services.neon
+		- factories.neon
 
 production < common:
 
 development < common:
+
+	nette:
+		container:
+			debugger: true
+
+	includes:
+		- development/database.neon
