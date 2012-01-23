@@ -58,7 +58,7 @@ class UIMacros extends MacroSet
 		$me->addMacro('widget', array($me, 'macroControl')); // deprecated - use control
 		$me->addMacro('control', array($me, 'macroControl'));
 
-		$me->addMacro('@href', function(MacroNode $node, $writer) use ($me) {
+		$me->addMacro('href', NULL, NULL, function(MacroNode $node, $writer) use ($me) {
 			return ' ?> href="<?php ' . $me->macroLink($node, $writer) . ' ?>"<?php ';
 		});
 		$me->addMacro('plink', array($me, 'macroLink'));
@@ -120,7 +120,7 @@ class UIMacros extends MacroSet
 
 			$prolog[] = '
 if ($_l->extends) {
-	return Nette\Latte\Macros\CoreMacros::includeTemplate($_l->extends, get_defined_vars(), $template)->render();
+	' . ($this->namedBlocks ? 'ob_start();' : 'return Nette\Latte\Macros\CoreMacros::includeTemplate($_l->extends, get_defined_vars(), $template)->render();') . '
 
 } elseif (!empty($_control->snippetMode)) {
 	return Nette\Latte\Macros\UIMacros::renderSnippets($_control, $_l, get_defined_vars());
@@ -274,6 +274,7 @@ if (!empty($_control->snippetMode)) {
 		if (isset($this->namedBlocks[$name])) {
 			throw new ParseException("Cannot redeclare static block '$name'");
 		}
+		$prolog = $this->namedBlocks ? '' : "if (\$_l->extends) { ob_end_clean(); return Nette\\Latte\\Macros\\CoreMacros::includeTemplate(\$_l->extends, get_defined_vars(), \$template)->render(); }\n";
 		$top = empty($node->parentNode);
 		$this->namedBlocks[$name] = TRUE;
 
@@ -283,17 +284,21 @@ if (!empty($_control->snippetMode)) {
 		}
 
 		if ($node->name === 'snippet') {
+			if ($node->htmlNode) {
+				$node->attrCode = $writer->write('<?php echo \' id="\' . $_control->getSnippetId(%var) . \'"\' ?>');
+				return $writer->write($include, $name);
+			}
 			$tag = trim($node->tokenizer->fetchWord(), '<>');
 			$tag = $tag ? $tag : 'div';
-			return $writer->write("?>\n<$tag id=\"<?php echo \$_control->getSnippetId(%var) ?>\"><?php $include ?>\n</$tag><?php ",
+			return $writer->write("$prolog ?>\n<$tag id=\"<?php echo \$_control->getSnippetId(%var) ?>\"><?php $include ?>\n</$tag><?php ",
 				(string) substr($name, 1), $name
 			);
 
 		} elseif ($node->name === 'define') {
-			return '';
+			return $prolog;
 
 		} else {
-			return $writer->write($include, $name);
+			return $writer->write($prolog . $include, $name);
 		}
 	}
 
@@ -311,8 +316,11 @@ if (!empty($_control->snippetMode)) {
 				if (!empty($node->data->dynamic)) {
 					$node->content .= '<?php if (isset($_dynSnippets)) return $_dynSnippets; ?>';
 				}
-				$this->namedBlocks[$node->data->name] = $node->content;
-				$node->content = '';
+				$this->namedBlocks[$node->data->name] = rtrim($node->content, " \t");
+				preg_match("#^(\n)?(.*?)([ \t]*)?$()#sD", $node->content, $m);
+				$this->namedBlocks[$node->data->name] = $m[2];
+				$node->content = $m[1] . $node->openingCode . "\n" . $m[3];
+				$node->openingCode = "<?php ?>";
 			}
 			return $node->data->end;
 
