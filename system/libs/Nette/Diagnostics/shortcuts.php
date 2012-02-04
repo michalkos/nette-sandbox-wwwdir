@@ -9,24 +9,17 @@
  * the file license.txt that was distributed with this source code.
  */
 
-namespace Nette\Application\UI;
-
-use Nette;
+use Nette\Diagnostics\Debugger;
 
 
 
 /**
- * Component with ability to receive signal.
- *
- * @author     David Grudl
+ * Nette\Diagnostics\Debugger::dump shortcut.
  */
-interface ISignalReceiver
+function dump($var)
 {
-
-	/**
-	 * @param  string
-	 * @return void
-	 */
-	function signalReceived($signal); // handleSignal
-
+	foreach (func_get_args() as $arg) {
+		Debugger::dump($arg);
+	}
+	return $var;
 }

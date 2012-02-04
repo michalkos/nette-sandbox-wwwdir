@@ -13,7 +13,7 @@ namespace Nette\Latte\Macros;
 
 use Nette,
 	Nette\Latte,
-	Nette\Latte\ParseException,
+	Nette\Latte\CompileException,
 	Nette\Latte\MacroNode;
 
 
@@ -127,7 +127,7 @@ class CoreMacros extends MacroSet
 	{
 		if ($node->data->capture) {
 			if ($node->args === '') {
-				throw new ParseException('Missing condition in {if} macro.');
+				throw new CompileException('Missing condition in {if} macro.');
 			}
 			return $writer->write('if (%node.args) '
 				. (isset($node->data->else) ? '{ ob_end_clean(); ob_end_flush(); }' : 'ob_end_flush();')
@@ -148,7 +148,7 @@ class CoreMacros extends MacroSet
 		$ifNode = $node->parentNode;
 		if ($ifNode && $ifNode->name === 'if' && $ifNode->data->capture) {
 			if (isset($ifNode->data->else)) {
-				throw new ParseException("Macro {if} supports only one {else}.");
+				throw new CompileException("Macro {if} supports only one {else}.");
 			}
 			$ifNode->data->else = TRUE;
 			return 'ob_start()';
@@ -211,7 +211,7 @@ class CoreMacros extends MacroSet
 	{
 		$variable = $node->tokenizer->fetchWord();
 		if (substr($variable, 0, 1) !== '$') {
-			throw new ParseException("Invalid capture block variable '$variable'");
+			throw new CompileException("Invalid capture block variable '$variable'");
 		}
 		$node->data->variable = $variable;
 		return 'ob_start()';
@@ -234,7 +234,7 @@ class CoreMacros extends MacroSet
 	 */
 	public function macroEndForeach(MacroNode $node, $writer)
 	{
-		if (preg_match('#\W(\$iterator|include|require|get_defined_vars)\W#', $node->content)) {
+		if (preg_match('#\W(\$iterator|include|require|get_defined_vars)\W#', $this->getCompiler()->expandTokens($node->content))) {
 			$node->openingCode = '<?php $iterations = 0; foreach ($iterator = $_l->its[] = new Nette\Iterators\CachingIterator('
 			. preg_replace('#(.*)\s+as\s+#i', '$1) as ', $writer->formatArgs(), 1) . '): ?>';
 			$node->closingCode = '<?php $iterations++; endforeach; array_pop($_l->its); $iterator = end($_l->its) ?>';
@@ -327,7 +327,7 @@ class CoreMacros extends MacroSet
 				$var = TRUE;
 
 			} elseif ($var === NULL && $node->name === 'default' && $token['type'] !== Latte\MacroTokenizer::T_WHITESPACE) {
-				throw new ParseException("Unexpected '$token[value]' in {default $node->args}");
+				throw new CompileException("Unexpected '$token[value]' in {default $node->args}");
 
 			} else {
 				$out .= $writer->canQuote($tokenizer) ? "'$token[value]'" : $token['value'];

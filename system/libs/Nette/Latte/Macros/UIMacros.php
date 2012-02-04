@@ -14,7 +14,7 @@ namespace Nette\Latte\Macros;
 use Nette,
 	Nette\Latte,
 	Nette\Latte\MacroNode,
-	Nette\Latte\ParseException,
+	Nette\Latte\CompileException,
 	Nette\Utils\Strings;
 
 
@@ -92,7 +92,7 @@ class UIMacros extends MacroSet
 		// try close last block
 		try {
 			$this->getCompiler()->writeMacro('/block');
-		} catch (ParseException $e) {
+		} catch (CompileException $e) {
 		}
 
 		$epilog = $prolog = array();
@@ -154,15 +154,15 @@ if (!empty($_control->snippetMode)) {
 
 		$destination = ltrim($destination, '#');
 		if (!Strings::match($destination, '#^\$?' . self::RE_IDENTIFIER . '$#')) {
-			throw new ParseException("Included block name must be alphanumeric string, '$destination' given.");
+			throw new CompileException("Included block name must be alphanumeric string, '$destination' given.");
 		}
 
 		$parent = $destination === 'parent';
 		if ($destination === 'parent' || $destination === 'this') {
 			$item = $node->parentNode;
-			while ($item && $item->name !== 'block' && !isset($item->data->name)) $item = $item->parentNode;
+			for ($item = $node->parentNode; $item && $item->name !== 'block' && !isset($item->data->name); $item = $item->parentNode);
 			if (!$item) {
-				throw new ParseException("Cannot include $destination block outside of any block.");
+				throw new CompileException("Cannot include $destination block outside of any block.");
 			}
 			$destination = $item->data->name;
 		}
@@ -171,7 +171,7 @@ if (!empty($_control->snippetMode)) {
 		if (isset($this->namedBlocks[$destination]) && !$parent) {
 			$cmd = "call_user_func(reset(\$_l->blocks[$name]), \$_l, %node.array? + get_defined_vars())";
 		} else {
-			$cmd = 'Nette\Latte\Macros\UIMacros::callBlock' . ($parent ? 'Parent' : '') . "(\$_l, $name, %node.array? + \$template->getParameters())";
+			$cmd = 'Nette\Latte\Macros\UIMacros::callBlock' . ($parent ? 'Parent' : '') . "(\$_l, $name, %node.array? + " . ($parent ? 'get_defined_vars' : '$template->getParameters') . '())';
 		}
 
 		if ($node->modifiers) {
@@ -200,20 +200,20 @@ if (!empty($_control->snippetMode)) {
 	public function macroExtends(MacroNode $node, $writer)
 	{
 		if (!$node->args) {
-			throw new ParseException("Missing destination in {extends}");
+			throw new CompileException("Missing destination in {extends}");
 		}
 		if (!empty($node->parentNode)) {
-			throw new ParseException("{extends} must be placed outside any macro.");
+			throw new CompileException("{extends} must be placed outside any macro.");
 		}
 		if ($this->extends !== NULL) {
-			throw new ParseException("Multiple {extends} declarations are not allowed.");
+			throw new CompileException("Multiple {extends} declarations are not allowed.");
 		}
 		if ($node->args === 'none') {
 			$this->extends = 'FALSE';
 		} elseif ($node->args === 'auto') {
 			$this->extends = '$_presenter->findLayoutTemplateFile()';
 		} else {
-			$this->extends = $writer->write('%node.word');
+			$this->extends = $writer->write('%node.word%node.args');
 		}
 		return;
 	}
@@ -234,31 +234,34 @@ if (!empty($_control->snippetMode)) {
 		}
 
 		$node->data->name = $name = ltrim($name, '#');
-		$node->data->end = '';
 		if ($name == NULL) {
 			if ($node->name !== 'snippet') {
-				throw new ParseException("Missing block name.");
+				throw new CompileException("Missing block name.");
 			}
 
 		} elseif (!Strings::match($name, '#^' . self::RE_IDENTIFIER . '$#')) { // dynamic blok/snippet
 			if ($node->name === 'snippet') {
-				$parent = $node->parentNode;
-				while ($parent && $parent->name !== 'snippet') $parent = $parent->parentNode;
+				for ($parent = $node->parentNode; $parent && $parent->name !== 'snippet'; $parent = $parent->parentNode);
 				if (!$parent) {
-					throw new ParseException("Dynamic snippets are allowed only inside static snippet.");
+					throw new CompileException("Dynamic snippets are allowed only inside static snippet.");
 				}
 				$parent->data->dynamic = TRUE;
+				$node->data->leave = TRUE;
+				$node->closingCode = "<?php \$_dynSnippets[\$_dynSnippetId] = ob_get_flush() ?>";
 
+				if ($node->htmlNode) {
+					$node->attrCode = $writer->write("<?php echo ' id=\"' . (\$_dynSnippetId = \$_control->getSnippetId({$writer->formatWord($name)})) . '\"' ?>");
+					return $writer->write('ob_start()');
+				}
 				$tag = trim($node->tokenizer->fetchWord(), '<>');
 				$tag = $tag ? $tag : 'div';
-				$node->data->leave = TRUE;
-				$node->data->end = "\$_dynSnippets[\$_dynSnippetId] = ob_get_flush() ?>\n</$tag><?php";
+				$node->closingCode .= "\n</$tag>";
 				return $writer->write("?>\n<$tag id=\"<?php echo \$_dynSnippetId = \$_control->getSnippetId({$writer->formatWord($name)}) ?>\"><?php ob_start()");
 
 			} else {
 				$node->data->leave = TRUE;
 				$fname = $writer->formatWord($name);
-				$node->data->end = "}} call_user_func(reset(\$_l->blocks[$fname]), \$_l, get_defined_vars())";
+				$node->closingCode = "<?php }} call_user_func(reset(\$_l->blocks[$fname]), \$_l, get_defined_vars()) ?>";
 				$func = '_lb' . substr(md5($this->getCompiler()->getTemplateId() . $name), 0, 10) . '_' . preg_replace('#[^a-z0-9_]#i', '_', $name);
 				return "//\n// block $name\n//\n"
 					. "if (!function_exists(\$_l->blocks[$fname][] = '$func')) { "
@@ -272,7 +275,7 @@ if (!empty($_control->snippetMode)) {
 			$node->data->name = $name = '_' . $name;
 		}
 		if (isset($this->namedBlocks[$name])) {
-			throw new ParseException("Cannot redeclare static block '$name'");
+			throw new CompileException("Cannot redeclare static block '$name'");
 		}
 		$prolog = $this->namedBlocks ? '' : "if (\$_l->extends) { ob_end_clean(); return Nette\\Latte\\Macros\\CoreMacros::includeTemplate(\$_l->extends, get_defined_vars(), \$template)->render(); }\n";
 		$top = empty($node->parentNode);
@@ -285,8 +288,8 @@ if (!empty($_control->snippetMode)) {
 
 		if ($node->name === 'snippet') {
 			if ($node->htmlNode) {
-				$node->attrCode = $writer->write('<?php echo \' id="\' . $_control->getSnippetId(%var) . \'"\' ?>');
-				return $writer->write($include, $name);
+				$node->attrCode = $writer->write('<?php echo \' id="\' . $_control->getSnippetId(%var) . \'"\' ?>', (string) substr($name, 1));
+				return $writer->write($prolog . $include, $name);
 			}
 			$tag = trim($node->tokenizer->fetchWord(), '<>');
 			$tag = $tag ? $tag : 'div';
@@ -312,17 +315,23 @@ if (!empty($_control->snippetMode)) {
 	public function macroBlockEnd(MacroNode $node, $writer)
 	{
 		if (isset($node->data->name)) { // block, snippet, define
+			if ($node->name === 'snippet' && isset($node->htmlNode->macroAttrs['snippet']) // n:snippet -> n:inner-snippet
+				&& preg_match("#^(.*? n:\w+>\n?)(.*?)([ \t]*<[^<]+)$#sD", $node->content, $m))
+			{
+				$node->openingCode = $m[1] . $node->openingCode;
+				$node->content = $m[2];
+				$node->closingCode .= $m[3];
+			}
+
 			if (empty($node->data->leave)) {
 				if (!empty($node->data->dynamic)) {
 					$node->content .= '<?php if (isset($_dynSnippets)) return $_dynSnippets; ?>';
 				}
-				$this->namedBlocks[$node->data->name] = rtrim($node->content, " \t");
-				preg_match("#^(\n)?(.*?)([ \t]*)?$()#sD", $node->content, $m);
+				preg_match("#^(\n)?(.*?)([ \t]*)$#sD", $node->content, $m);
 				$this->namedBlocks[$node->data->name] = $m[2];
 				$node->content = $m[1] . $node->openingCode . "\n" . $m[3];
 				$node->openingCode = "<?php ?>";
 			}
-			return $node->data->end;
 
 		} elseif ($node->modifiers) { // anonymous block with modifier
 			return $writer->write('echo %modify(ob_get_clean())');
@@ -355,7 +364,7 @@ if (!empty($_control->snippetMode)) {
 	{
 		$pair = $node->tokenizer->fetchWord();
 		if ($pair === FALSE) {
-			throw new ParseException("Missing control name in {control}");
+			throw new CompileException("Missing control name in {control}");
 		}
 		$pair = explode(':', $pair, 2);
 		$name = $writer->formatWord($pair[0]);
@@ -401,7 +410,10 @@ if (!empty($_control->snippetMode)) {
 	 */
 	public function macroContentType(MacroNode $node, $writer)
 	{
-		if (Strings::contains($node->args, 'html')) {
+		if (Strings::contains($node->args, 'xhtml')) {
+			$this->getCompiler()->setContentType(Latte\Compiler::CONTENT_XHTML);
+
+		} elseif (Strings::contains($node->args, 'html')) {
 			$this->getCompiler()->setContentType(Latte\Compiler::CONTENT_HTML);
 
 		} elseif (Strings::contains($node->args, 'xml')) {
