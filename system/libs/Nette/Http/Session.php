@@ -96,7 +96,7 @@ class Session extends Nette\Object
 
 		Nette\Diagnostics\Debugger::tryError();
 		session_start();
-		if (Nette\Diagnostics\Debugger::catchError($e)) {
+		if (Nette\Diagnostics\Debugger::catchError($e) && !session_id()) {
 			@session_write_close(); // this is needed
 			throw new Nette\InvalidStateException('session_start(): ' . $e->getMessage(), 0, $e);
 		}
@@ -223,7 +223,7 @@ class Session extends Nette\Object
 	 */
 	public function exists()
 	{
-		return self::$started || $this->request->getCookie(session_name()) !== NULL;
+		return self::$started || $this->request->getCookie($this->getName()) !== NULL;
 	}
 
 
@@ -284,7 +284,7 @@ class Session extends Nette\Object
 	 */
 	public function getName()
 	{
-		return session_name();
+		return isset($this->options['name']) ? $this->options['name'] : session_name();
 	}
 
 

@@ -303,8 +303,11 @@ abstract class Presenter extends Control implements Application\IPresenter
 			return;
 		}
 
-		$component = $this->signalReceiver === '' ? $this : $this->getComponent($this->signalReceiver, FALSE);
-		if ($component === NULL) {
+		try {
+			$component = $this->signalReceiver === '' ? $this : $this->getComponent($this->signalReceiver, FALSE);
+		} catch (Nette\InvalidArgumentException $e) {}
+
+		if (isset($e) || $component === NULL) {
 			throw new BadSignalException("The signal receiver component '$this->signalReceiver' is not found.");
 
 		} elseif (!$component instanceof ISignalReceiver) {
@@ -878,7 +881,7 @@ abstract class Presenter extends Control implements Application\IPresenter
 			try {
 				$presenterClass = $presenterFactory->getPresenterClass($presenter);
 			} catch (Application\InvalidPresenterException $e) {
-				throw new InvalidLinkException($e->getMessage()/**/, NULL, $e/**/);
+				throw new InvalidLinkException($e->getMessage(), NULL, $e);
 			}
 		}
 
@@ -927,11 +930,9 @@ abstract class Presenter extends Control implements Application\IPresenter
 			$reflection = new PresenterComponentReflection($presenterClass);
 			if ($args || $destination === 'this') {
 				// counterpart of run() & tryCall()
-				/**/$method = $presenterClass::formatActionMethod($action);/**/
-				/*5.2* $method = call_user_func(array($presenterClass, 'formatActionMethod'), $action);*/
+				$method = $presenterClass::formatActionMethod($action);
 				if (!$reflection->hasCallableMethod($method)) {
-					/**/$method = $presenterClass::formatRenderMethod($action);/**/
-					/*5.2* $method = call_user_func(array($presenterClass, 'formatRenderMethod'), $action);*/
+					$method = $presenterClass::formatRenderMethod($action);
 					if (!$reflection->hasCallableMethod($method)) {
 						$method = NULL;
 					}
@@ -954,6 +955,10 @@ abstract class Presenter extends Control implements Application\IPresenter
 			// counterpart of IStatePersistent
 			if ($args && array_intersect_key($args, $reflection->getPersistentParams())) {
 				$this->saveState($args, $reflection);
+			}
+
+			if ($mode === 'redirect') {
+				$this->saveGlobalState();
 			}
 
 			$globalState = $this->getGlobalState($destination === 'this' ? NULL : $presenterClass);
@@ -1134,15 +1139,16 @@ abstract class Presenter extends Control implements Application\IPresenter
 	public function restoreRequest($key)
 	{
 		$session = $this->getSession('Nette.Application/requests');
-		if (isset($session[$key]) && $this->getUser()->getId() === $session[$key][0]) {
-			$request = clone $session[$key][1];
-			unset($session[$key]);
-			$request->setFlag(Application\Request::RESTORED, TRUE);
-			$params = $request->getParameters();
-			$params[self::FLASH_KEY] = $this->getParameter(self::FLASH_KEY);
-			$request->setParameters($params);
-			$this->sendResponse(new Responses\ForwardResponse($request));
+		if (!isset($session[$key]) || ($session[$key][0] !== NULL && $session[$key][0] !== $this->getUser()->getId())) {
+			return;
 		}
+		$request = clone $session[$key][1];
+		unset($session[$key]);
+		$request->setFlag(Application\Request::RESTORED, TRUE);
+		$params = $request->getParameters();
+		$params[self::FLASH_KEY] = $this->getParameter(self::FLASH_KEY);
+		$request->setParameters($params);
+		$this->sendResponse(new Responses\ForwardResponse($request));
 	}
 
 
@@ -1158,8 +1164,7 @@ abstract class Presenter extends Control implements Application\IPresenter
 	 */
 	public static function getPersistentComponents()
 	{
-		/*5.2*$arg = func_get_arg(0);*/
-		return (array) Reflection\ClassType::from(/*5.2*$arg*//**/get_called_class()/**/)
+		return (array) Reflection\ClassType::from(get_called_class())
 			->getAnnotation('persistent');
 	}
 
@@ -1369,9 +1374,7 @@ abstract class Presenter extends Control implements Application\IPresenter
 
 
 	/**
-	 * Gets the service object by name.
-	 * @param  string
-	 * @return mixed.
+	 * @deprecated
 	 */
 	final public function getService($name)
 	{

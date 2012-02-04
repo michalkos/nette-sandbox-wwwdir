@@ -210,10 +210,7 @@ class RobotLoader extends AutoLoader
 				return $this->addClass($class, $file, $time);
 			}
 			$e = new Nette\InvalidStateException("Ambiguous class '$class' resolution; defined in $file and in " . $this->list[$lClass][0] . ".");
-			/*5.2*if (PHP_VERSION_ID < 50300) {
-				Nette\Diagnostics\Debugger::_exceptionHandler($e);
-				exit;
-			} else*/ {
+			{
 				throw $e;
 			}
 		}
@@ -248,7 +245,7 @@ class RobotLoader extends AutoLoader
 					$path = $dir->getPathname();
 					if (is_file("$path/netterobots.txt")) {
 						foreach (file("$path/netterobots.txt") as $s) {
-							if ($matches = Strings::match($s, '#^disallow\\s*:\\s*(\\S+)#i')) {
+							if ($matches = Strings::match($s, '#^(?:disallow\\s*:)?\\s*(\\S+)#i')) {
 								$disallow[$path . str_replace('/', DIRECTORY_SEPARATOR, rtrim('/' . ltrim($matches[1], '/'), '/'))] = TRUE;
 							}
 						}

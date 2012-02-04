@@ -9,24 +9,20 @@
  * the file license.txt that was distributed with this source code.
  */
 
-namespace Nette\Application\UI;
+namespace Nette\Latte;
 
 use Nette;
 
 
 
 /**
- * Component with ability to receive signal.
+ * The exception occured during Latte compilation.
  *
  * @author     David Grudl
  */
-interface ISignalReceiver
+class CompileException extends Nette\Templating\FilterException
 {
-
-	/**
-	 * @param  string
-	 * @return void
-	 */
-	function signalReceived($signal); // handleSignal
-
 }
+
+
+class_alias('Nette\Latte\CompileException', 'Nette\Latte\ParseException');
