@@ -49,7 +49,7 @@ class DibiNettePanel extends DibiObject implements IBarPanel
 
 	public function register(DibiConnection $connection)
 	{
-		if (is_callable('Nette\Diagnostics\Debugger::enable')) {
+		if (is_callable('Nette\Diagnostics\Debugger::enable') && !class_exists('NDebugger')) {
 			class_alias('Nette\Diagnostics\Debugger', 'NDebugger'); // PHP 5.2 code compatibility
 		}
 		if (is_callable('NDebugger::enable')) {
@@ -123,7 +123,8 @@ class DibiNettePanel extends DibiObject implements IBarPanel
 				try {
 					$backup = array($event->connection->onEvent, dibi::$numOfQueries, dibi::$totalTime);
 					$event->connection->onEvent = NULL;
-					$explain = dibi::dump($event->connection->nativeQuery((is_string($this->explain) ? $this->explain : 'EXPLAIN') . ' ' . $event->sql), TRUE);
+					$cmd = is_string($this->explain) ? $this->explain : ($event->connection->getConfig('driver') === 'oracle' ? 'EXPLAIN PLAN' : 'EXPLAIN');
+					$explain = dibi::dump($event->connection->nativeQuery("$cmd $event->sql"), TRUE);
 				} catch (DibiException $e) {}
 				list($event->connection->onEvent, dibi::$numOfQueries, dibi::$totalTime) = $backup;
 			}

@@ -62,6 +62,8 @@ class DibiConnection extends DibiObject
 	 */
 	public function __construct($config, $name = NULL)
 	{
+		class_exists('dibi'); // ensure class dibi is loaded
+
 		// DSN string
 		if (is_string($config)) {
 			parse_str($config, $config);
@@ -118,7 +120,7 @@ class DibiConnection extends DibiObject
 				$this->onEvent[] = array(new DibiFirePhpLogger($filter), 'logEvent');
 			}
 
-			if (class_exists('DibiNettePanel')) {
+			if (class_exists('DibiNettePanel', FALSE)) {
 				$panel = new DibiNettePanel(isset($profilerCfg['explain']) ? $profilerCfg['explain'] : TRUE, $filter);
 				$panel->register($this);
 			}

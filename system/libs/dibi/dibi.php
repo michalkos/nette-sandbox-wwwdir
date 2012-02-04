@@ -81,7 +81,7 @@ class dibi
 
 	/** version */
 	const VERSION = '2.0',
-		REVISION = 'd89cb4f released on 2012-01-19';
+		REVISION = '7c47f57 released on 2012-02-03';
 
 	/** sorting order */
 	const ASC = 'ASC',
