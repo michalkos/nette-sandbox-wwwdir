@@ -10,6 +10,16 @@ common:
 		# session.save_path: "%tempDir%/sessions"
 		# zlib.output_compression: yes
 
+	nette:
+		session:
+			autoStart: smart
+
+		debugger:
+			email: 'my@email.tld'
+
+		container:
+			debugger: true
+
 	includes:
 		- database.neon
 		- services.neon
@@ -18,10 +28,6 @@ common:
 production < common:
 
 development < common:
-
-	nette:
-		container:
-			debugger: true
 
 	includes:
 		- development/database.neon
