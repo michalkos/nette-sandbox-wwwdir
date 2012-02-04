@@ -1,15 +1,5 @@
 <?php
 
-// uncomment this line if you must temporarily take down your site for maintenance
-// require 'app/templates/maintenance.phtml';
-
-// define an array of application parameters appended to configurator
-$params = array();
-
-// force a development mode for the domain
-// usefull if you are working the the framework on a shared network
-// if(strpos($_SERVER['HTTP_HOST'], '.mydomain.com') !== false) $params['forceDevelopmentMode'] = true;
-
 // absolute filesystem path to this web root
 define('WWW_DIR', __DIR__);
 
@@ -21,6 +11,9 @@ define('SYS_DIR', WWW_DIR . '/system');
 
 // absolute filesystem path to the libraries
 define('LIBS_DIR', SYS_DIR . '/libs');
+
+// uncomment this line if you must temporarily take down your site for maintenance
+//require APP_DIR . '/templates/maintenance.phtml';
 
 // load bootstrap file
 require APP_DIR . '/bootstrap.php';
