@@ -4,13 +4,14 @@
  * Application bootstrap file.
  */
 use Nette\Diagnostics\Debugger,
-	Nette\Application\Routers\Route;
+	Nette\Application\Routers\Route,
+	Nette\Config\Configurator;
 
 // Load Nette Framework
 require LIBS_DIR . '/Nette/loader.php';
 
 // Configure application
-$configurator = new Nette\Config\Configurator;
+$configurator = new Configurator;
 
 // Set a development mode for the domain
 // Usefull if you are working with the framework on a shared network
@@ -34,7 +35,10 @@ $configurator->createRobotLoader()
 	->register();
 
 // Create Dependency Injection container from config.neon file
-$configurator->addConfig(APP_DIR . '/config/config.neon');
+$configurator->addConfig(APP_DIR . '/config/config.neon'/*,
+	// Load the config based on production mode
+	$configurator->productionMode ? Configurator::PRODUCTION : Configurator::DEVELOPMENT
+*/);
 $container = $configurator->createContainer();
 
 // Setup router
@@ -44,6 +48,6 @@ $router[] = new Route('<presenter>[/<action>][/<id>][.html]', 'Homepage:default'
 
 // Configure and run the application!
 $application = $container->application;
-$application->catchExceptions = $container->parameters['productionMode'];
+$application->catchExceptions = $configurator->productionMode;
 $application->errorPresenter = 'Error';
 $application->run();
