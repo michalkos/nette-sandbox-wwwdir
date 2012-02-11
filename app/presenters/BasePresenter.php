@@ -4,8 +4,8 @@
  * Base class for all application presenters.
  *
  * @author Michal Kos
- * @method \SystemContainer|\Nette\DI\Container getContext() getContext()
- * @property \SystemContainer|\Nette\DI\Container $context
+ * @method \SystemContainer getContext() getContext()
+ * @property \SystemContainer $context
  */
 abstract class BasePresenter extends Nette\Application\UI\Presenter
 {
@@ -16,7 +16,7 @@ abstract class BasePresenter extends Nette\Application\UI\Presenter
 	protected function startup()
 	{
 		parent::startup();
-		$this->model = $this->getService('model');
+		$this->model = $this->getContext()->model;
 	}
 	
 }

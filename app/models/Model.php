@@ -8,7 +8,7 @@ class Model extends Nette\Object
 {
 	
 	/** @var DibiConnection */
-	public $db;
+	protected $db;
 
 	/** @var string */
 	public $sql;
@@ -29,11 +29,20 @@ class Model extends Nette\Object
 	 * Load Model
 	 * @param string $name Class name
 	 * @param Nette\DI\Container|NULL $context You can need to set a context sometimes
-	 * @return \{$name}
+	 * @return \Model\{$name}|\{$name}
 	 */
 	public function loadModel($name, Nette\DI\Container $context = null)
 	{
-		return new $name($this, $context);
+		$name = ucfirst($name);
+		$class = 'Model\\' . $name;
+		
+		if (class_exists($class)) {
+			$model = new $class($this, $context);
+		} else {
+			$model = new $name($this, $context);
+		}
+		
+		return $model;
 	}
 	
 	

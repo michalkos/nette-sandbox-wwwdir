@@ -1,17 +1,21 @@
 <?php
 
+namespace Model;
+
+use Nette;
+
 /**
  * Extend this when you are creating a Model
  * @author Michal Kos
  */
-abstract class ModelLoader extends Nette\Object
+abstract class BaseModel extends Nette\Object
 {
 	
 	/** @var \Model */
 	public $model;
 	
 	/** @var \SystemContainer|\Nette\DI\Container|NULL */
-	public $context;
+	protected $context;
 	
 	/** @var bool */
 	protected $modelStarted = false;
@@ -19,10 +23,10 @@ abstract class ModelLoader extends Nette\Object
 	
 	/**
 	 * ModelFactory Construct
-	 * @param Model $model
+	 * @param \Model $model
 	 * @param Nette\DI\Container|NULL $context
 	 */
-	public function __construct(Model $model, Nette\DI\Container $context = NULL)
+	public function __construct(\Model $model, Nette\DI\Container $context = NULL)
 	{
 		$this->model = $model;
 		$this->context = $context;
